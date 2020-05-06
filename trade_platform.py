@@ -1,12 +1,11 @@
-from threading import Thread, Lock
-import time
+from threading import Thread
+import matplotlib.pyplot as plt
+import numpy as np
 
 from market import market_thread
 from util import *
-from agent_thread import agent_thread
 
 from simple_agent import simple_agent
-# Define Macros:
 
 
 
@@ -35,7 +34,7 @@ class trade_platform(Thread):
         self.synchronized = synchronized
 
         self.exit = False
-
+        self.plotted = False
     def add_agent(self, ag):
         # needs to be added before Thread start
         # if(self.started):
@@ -51,6 +50,7 @@ class trade_platform(Thread):
 
         last_time = self.market.get_time()
         while True:
+            self._plot()
             if self.market.ended:
                 print("Info: platform: simulation finished")
                 self.end_market_agent()
@@ -143,9 +143,21 @@ class trade_platform(Thread):
         for ag in self.acb:
             ag.agent.set_exit()
 
+    def _plot(self):
 
-t = trade_platform(length=1000)
-t.add_agent(simple_agent())
-t.start()
+        def _update_plot():
+            self.line1.set_ydata([i.price for i in self.market.get_ranged_value(50)])
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+        if self.plotted:
+            _update_plot()
+            return
+        self.plotted = True
+        plt.ion()
+        self.fig = plt.figure()
+        self.ax = self.fig.add_subplot(111)
 
-# foo()
+        self.line1, = self.ax.plot(np.arange(50), [i.price for i in self.market.get_ranged_value(50)], 'r-')
+
+
+

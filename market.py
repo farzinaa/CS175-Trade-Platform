@@ -36,7 +36,9 @@ class market():
             raise Exception("get_ranged_value : negative")
         if range == 0:
             return self.get_all_value()
-        return self.market_values[self.time_counter - range : self.time_counter]
+        if(range >= self.time_counter + 1):
+            return np.append(np.array([mrkt_data(0, None)]*(range-self.time_counter-1)), np.array(self.market_values[0:self.time_counter+1]))
+        return np.array(self.market_values[self.time_counter - range : self.time_counter])
 
     def set_time(self,value):
         # to skip forward, meant for debug, no guarantee
@@ -107,3 +109,11 @@ class market_thread(market, Thread):
                 time.sleep(1/self.animation_speed)
                 self.next_time()
 
+# m = market_thread(random=True,length=1000)
+# m.start()
+# print()
+# m.set_next_time_status()
+# m.get_time()
+# l = m.get_ranged_value(50)
+# for i in l:
+#     print(i.price)
