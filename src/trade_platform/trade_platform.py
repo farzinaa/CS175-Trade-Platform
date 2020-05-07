@@ -47,8 +47,8 @@ class trade_platform(Thread):
 
         last_time = self.market.get_time()
         while True:
-            # if self.enable_plot:
-            self._plot()
+            if self.enable_plot:
+                self._plot()
             if self.market.ended:
                 print("Info: platform: simulation finished")
                 self.end_market_agent()
