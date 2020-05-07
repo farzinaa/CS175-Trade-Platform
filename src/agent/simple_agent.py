@@ -1,6 +1,6 @@
-from agent_thread import agent_thread
-from util import *
-import time
+from src.agent.agent_thread import agent_thread
+from src.util.util import *
+
 
 class simple_agent(agent_thread):
     def __init__(self):

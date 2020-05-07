@@ -2,8 +2,8 @@ from enum import Enum
 
 class mrkt_data:
     # store all the data at a unit of time
-    def __init__(self, price, time = 0):
-        self.price = price
+    def __init__(self, args,time = 0 ):
+        self.price = args[0]
         self.time  = time # time here is only as a reference. Use with discretion
 
 class action(Enum):

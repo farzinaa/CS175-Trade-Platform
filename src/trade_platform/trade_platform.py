@@ -2,13 +2,8 @@ from threading import Thread
 import matplotlib.pyplot as plt
 import numpy as np
 
-from market import market_thread
-from util import *
-
-from simple_agent import simple_agent
-
-
-
+from src.market.market import market_thread
+from src.util.util import *
 
 
 class trade_platform(Thread):
@@ -26,13 +21,15 @@ class trade_platform(Thread):
             # other functionality such as logging transactions, prices will be left for agent itself
             # but can be added here
 
-    def __init__(self, synchronized=True, random=True, length=1000):
+    def __init__(self, synchronized=True, random=True, length=1000, data_path = '',enable_plot=False):
         Thread.__init__(self)
-
+        if(data_path != ''):
+            random = False
+            length = 0
         self.acb = []
-        self.market = market_thread(sync=synchronized, random=random, length=length)
+        self.market = market_thread(sync=synchronized, random=random, length=length,data_path=data_path)
         self.synchronized = synchronized
-
+        self.enable_plot = enable_plot
         self.exit = False
         self.plotted = False
     def add_agent(self, ag):
@@ -50,6 +47,7 @@ class trade_platform(Thread):
 
         last_time = self.market.get_time()
         while True:
+            # if self.enable_plot:
             self._plot()
             if self.market.ended:
                 print("Info: platform: simulation finished")

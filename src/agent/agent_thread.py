@@ -1,5 +1,5 @@
 from threading import Thread
-from util import *
+from src.util.util import *
 
 class agent_thread(Thread):
     def __init__(self, sync=True, currently_holding=0, buy_in_price=0, time_=0, market_history=[]):

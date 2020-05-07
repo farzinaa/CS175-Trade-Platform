@@ -1,27 +1,40 @@
 from threading import Thread,Lock
 import time
 import  numpy as np
-from util import *
+from src.util.util import *
 
 class market():
     '''/*
      * This is the base object for market
      * it will only consider price
     */'''
-    def __init__(self , random=False,length=0):
+    def __init__(self ,data_path = '', random=False,length=0):
         self.time_counter = 0
         self.market_values = list()
-        self.length = length
-
+        if random:
+            self.length = length
+        else:
+            self.length = 0
         self.ended = False # status of simulation
         #randomly generate price
         if random:
             r = np.random.random(self.length) * 5 + 20
             for i,d in enumerate(r):
-                self.market_values.append(mrkt_data(d,i))
-
-
-
+                self.market_values.append(mrkt_data([d],time=i))
+        else:
+            self.data_path = data_path
+            self.read_data()
+            print("Info: Market: imported "+str(self.length) + "lines of data")
+    def read_data(self):
+        t = 0
+        with open(self.data_path) as f:
+            for line in f:
+                self.length += 1
+                d = line.strip().split(',')
+                for i, ii in enumerate(d):
+                    d[i] = float(ii)
+                self.market_values.append(mrkt_data(d, time=t))
+                t += 1
     def get_current_value(self):
         return self.market_values[self.time_counter]
 
@@ -37,7 +50,7 @@ class market():
         if range == 0:
             return self.get_all_value()
         if(range >= self.time_counter + 1):
-            return np.append(np.array([mrkt_data(0, None)]*(range-self.time_counter-1)), np.array(self.market_values[0:self.time_counter+1]))
+            return np.append(np.array([mrkt_data([0], None)]*(range-self.time_counter-1)), np.array(self.market_values[0:self.time_counter+1]))
         return np.array(self.market_values[self.time_counter - range : self.time_counter])
 
     def set_time(self,value):
@@ -61,7 +74,7 @@ class market():
 
 
 class market_thread(market, Thread):
-    def __init__(self, sync = True,  animation_speed = 1.0, random=False,length=0, graph=False, graph_span=50):
+    def __init__(self, sync = True,data_path = '', animation_speed = 1.0, random=False,length=0, graph=False, graph_span=50):
         '''/*
          * sync: True: wait for all agent finish to step into next unit of time
          * number_of_agent : in case you want more than one agent
@@ -72,7 +85,7 @@ class market_thread(market, Thread):
          * graph: enable real time market grpah
          * graph_span: How many past units of time are included in the graph. 0 : Entire history
         */'''
-        market.__init__(self, random=random, length=length)
+        market.__init__(self, random=random, length=length,data_path = data_path)
         Thread.__init__(self)
         self.sync = sync
         #self.next_time_status = False
@@ -109,7 +122,7 @@ class market_thread(market, Thread):
                 time.sleep(1/self.animation_speed)
                 self.next_time()
 
-# m = market_thread(random=True,length=1000)
+# m = market_thread(data_path='a.csv')
 # m.start()
 # print()
 # m.set_next_time_status()
