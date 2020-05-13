@@ -28,4 +28,6 @@ class simple_agent(agent_thread):
             print("hold 2 long  " + str(self.time_counter) + "\t price : " + str(
                 self.market_history[self.time_counter - 1].price))
             self.holding = False
+        else:
+            self.act = action.HOLD
         return self.act

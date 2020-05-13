@@ -14,7 +14,8 @@ class agent_thread(Thread):
         self.synchronized = sync
         self.market_history = market_history
 
-        self.act = action.BLOCK
+        self.act = action.HOLD
+        self.offer_price = None
 
         self.holding = currently_holding
         self.buy_in_price = buy_in_price
@@ -40,8 +41,8 @@ class agent_thread(Thread):
     def get_action(self):
         # return action
         # used by tp
-        return action.HOLD
-        # return self.act
+        # return action.HOLD
+        return self.act,self.offer_price
     '''
     def set_time(self, value):
         # for debug only
@@ -60,6 +61,7 @@ class agent_thread(Thread):
                 # and to prevent time from changing while running
         self.time_counter += 1
         self.next_time_flag = True
+        self.act = action.BLOCK
 
     ''' #USE WITH DISCRETION -_- DEBUG ONLY
     def set_market_history(self, time, data):
@@ -100,7 +102,8 @@ class agent_thread(Thread):
             # make a simply move
 
             # first we set action = block, so the market knows we need more time
-            self.act = action.BLOCK
+            # self.act = action.BLOCK
+            #This line was moved to next_time function
 
             # _find_decision
             self.act = self._find_decision()

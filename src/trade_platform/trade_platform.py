@@ -1,6 +1,7 @@
 from threading import Thread
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 from src.market.market import market_thread
 from src.util.util import *
@@ -17,21 +18,23 @@ class trade_platform(Thread):
             self.agent = agent
             self.act = action.HOLD
             self.holding = False  # True if brought, and cannot buy more until sell current
+            self.offer_price = 0.0
 
             # other functionality such as logging transactions, prices will be left for agent itself
             # but can be added here
 
-    def __init__(self, synchronized=True, random=True, length=1000, data_path = '',enable_plot=False):
+    def __init__(self, synchronized=True, random=True, length=1000, data_path='', enable_plot=False):
         Thread.__init__(self)
-        if(data_path != ''):
+        if (data_path != ''):
             random = False
             length = 0
         self.acb = []
-        self.market = market_thread(sync=synchronized, random=random, length=length,data_path=data_path)
+        self.market = market_thread(sync=synchronized, random=random, length=length, data_path=data_path)
         self.synchronized = synchronized
         self.enable_plot = enable_plot
         self.exit = False
         self.plotted = False
+
     def add_agent(self, ag):
         # needs to be added before Thread start
         # if(self.started):
@@ -58,7 +61,7 @@ class trade_platform(Thread):
                 break
             cur_time = self.market.get_time()
             if cur_time - last_time > 1:
-                raise Exception("ERROR : threads sync. Skipped one ",cur_time, last_time)
+                raise Exception("ERROR : threads sync. Skipped one ", cur_time, last_time)
 
             # synchronous
             # market will wait until all agents make decisons
@@ -71,7 +74,7 @@ class trade_platform(Thread):
 
                 # retrieve action from agent
                 for ag in self.acb:
-                    ag.act = ag.agent.get_action()
+                    ag.act, ag.offer_price = ag.agent.get_action()
 
                 # check if there is any blocking
                 blk = False
@@ -83,19 +86,31 @@ class trade_platform(Thread):
                 else:
                     self.market.set_next_time_status(True)
 
-
-                # register agents' transaction to ACB
+                # registrate agents' transaction to ACB
+                print(cur_time,ag.holding,ag.act)
                 for ag in self.acb:
                     if ag.act == action.BUY:
+                        if (market_data.high and market_data.low and ag.offer_price) != None and \
+                                (ag.offer_price < market_data.low or ag.offer_price > market_data.high):
+                            raise Exception("Buying w/ invalid office. Offer: " + str(ag.offer_price) + \
+                                            " market low and high: ", market_data.low, market_data.high)
                         if ag.holding:
-                            raise Exception("Buying w/ holding")
+                            raise Exception("Buying w/ holding, time = " + str(cur_time))
                         else:
                             ag.holding = True
+
+
+
                     elif ag.act == action.SELL:
+                        if (market_data.high and market_data.low and ag.offer_price) != None and \
+                                (ag.offer_price < market_data.low or ag.offer_price > market_data.high):
+                            raise Exception("Buying w/ invalid office. Offer: " + str(ag.offer_price) + \
+                                            " market low and high: ", market_data.low, market_data.high)
                         if ag.holding:
                             ag.holding = False
+
                         else:
-                            raise Exception("Selling w/o holding")
+                            raise Exception("Selling w/o holding, time = " + str(cur_time))
                     # reset their action
                     ag.act = action.BLOCK
 
@@ -103,20 +118,21 @@ class trade_platform(Thread):
             # it will ignore blocking, nor control market speed
             # it will only register agents' transaction to ACB when the time change
             # this section needs to be right after the time change(edge)
+            '''
             if not self.synchronized:
                 if cur_time != last_time:
                     # update acb
                     for ag in self.acb:
                         if ag.act == action.BUY:
                             if ag.holding:
-                                raise Exception("Buying w/ holding")
+                                raise Exception("Buying w/ holding, time = " + str(cur_time))
                             else:
                                 ag.holding = True
                         elif ag.act == action.SELL:
                             if ag.holding:
                                 ag.holding = False
                             else:
-                                raise Exception("Selling w/o holding")
+                                raise Exception("Selling w/o holding, time = " + str(cur_time))
                         # reset their action
                         ag.act = action.HOLD
 
@@ -129,7 +145,7 @@ class trade_platform(Thread):
                     # retrieve action from agent
                     for ag in self.acb:
                         ag.act = ag.agent.get_action()
-
+            '''
             last_time = cur_time
 
     def set_exit(self, value=True):
@@ -147,6 +163,7 @@ class trade_platform(Thread):
             self.line1.set_ydata([i.price for i in self.market.get_ranged_value(50)])
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
+
         if self.plotted:
             _update_plot()
             return
@@ -156,6 +173,3 @@ class trade_platform(Thread):
         self.ax = self.fig.add_subplot(111)
 
         self.line1, = self.ax.plot(np.arange(50), [i.price for i in self.market.get_ranged_value(50)], 'r-')
-
-
-
