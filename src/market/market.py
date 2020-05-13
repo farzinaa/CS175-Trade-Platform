@@ -1,7 +1,7 @@
 from threading import Thread,Lock
 import time
 import numpy as np
-from src.util.mrkt_data import mrkt_data
+from ...src.util.mrkt_data import mrkt_data
 
 class market():
     '''/*

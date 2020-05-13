@@ -1,5 +1,5 @@
-from src.agent.agent_thread import agent_thread
-from src.util.util import *
+from ...src.agent.agent_thread import agent_thread
+from ...src.util.util import *
 
 # This is a very simple Agent, it will buy any time possible
 # and sell if the current price is higher than buy-in price

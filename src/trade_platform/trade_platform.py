@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
-from src.market.market import market_thread
-from src.util.util import *
+from ...src.market.market import market_thread
+from ...src.util.util import *
 
 
 class trade_platform(Thread):
