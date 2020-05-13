@@ -23,17 +23,18 @@ class trade_platform(Thread):
             # other functionality such as logging transactions, prices will be left for agent itself
             # but can be added here
 
-    def __init__(self, synchronized=True, random=True, length=1000, data_path='', enable_plot=False):
+    def __init__(self, synchronized=True, random=True, length=1000, data_path='', enable_plot=False, cos_mrkt_data = None):
         Thread.__init__(self)
         if (data_path != ''):
             random = False
             length = 0
         self.acb = []
-        self.market = market_thread(sync=synchronized, random=random, length=length, data_path=data_path)
+        self.market = market_thread(sync=synchronized, random=random, length=length, data_path=data_path, cos_mrkt_data=cos_mrkt_data)
         self.synchronized = synchronized
         self.enable_plot = enable_plot
         self.exit = False
         self.plotted = False
+
 
     def add_agent(self, ag):
         # needs to be added before Thread start

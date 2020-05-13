@@ -1,7 +1,7 @@
 from threading import Thread,Lock
 import time
-import  numpy as np
-from src.util.util import *
+import numpy as np
+from src.util.mrkt_data import mrkt_data
 
 class market():
     '''/*
@@ -74,7 +74,7 @@ class market():
 
 
 class market_thread(market, Thread):
-    def __init__(self, sync = True,data_path = '', animation_speed = 1.0, random=False,length=0, graph=False, graph_span=50):
+    def __init__(self, sync = True,data_path = '', animation_speed = 1.0, random=False,length=0, graph=False, graph_span=50, cos_mrkt_data = None):
         '''/*
          * sync: True: wait for all agent finish to step into next unit of time
          * number_of_agent : in case you want more than one agent
@@ -84,7 +84,11 @@ class market_thread(market, Thread):
 
          * graph: enable real time market grpah
          * graph_span: How many past units of time are included in the graph. 0 : Entire history
+
+         * cos_mrkt_data: import customized mrkt_data
         */'''
+        if(cos_mrkt_data is not None):
+            mrkt_data.__init__ = cos_mrkt_data
         market.__init__(self, random=random, length=length,data_path = data_path)
         Thread.__init__(self)
         self.sync = sync
