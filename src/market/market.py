@@ -126,11 +126,3 @@ class market_thread(market, Thread):
                 time.sleep(1/self.animation_speed)
                 self.next_time()
 
-# m = market_thread(data_path='a.csv')
-# m.start()
-# print()
-# m.set_next_time_status()
-# m.get_time()
-# l = m.get_ranged_value(50)
-# for i in l:
-#     print(i.price)

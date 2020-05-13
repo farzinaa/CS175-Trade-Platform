@@ -3,7 +3,7 @@ from threading import Thread
 from ...src.util.util import *
 
 class agent_thread(Thread):
-    def __init__(self, sync=True,         currently_holding = False, buy_in_price = 0, time_ = 0, market_history = []):
+    def __init__(self, sync=True, currently_holding = False, buy_in_price = 0, time_ = 0, market_history = []):
         Thread.__init__(self)
 
         if time_ != len(market_history):
