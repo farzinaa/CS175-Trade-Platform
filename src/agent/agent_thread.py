@@ -24,6 +24,10 @@ class agent_thread(Thread):
 
         self.exit = False
 
+        # below allow the agent to generate percentage data
+        # this in for open, close, high, low version of mrkt_data
+        self._percentage_counter = 0; # remember until what time the percentage is accurate
+        self.percentage = []
     def _make_decision(self):
         # private function. To signal that a decision is made
         self.next_time_flag = False
@@ -37,6 +41,45 @@ class agent_thread(Thread):
         time.sleep(0.1)
         self.act = action.HOLD
         return self.act
+    def _find_percentage(self):
+        # called by get_percentage.
+        while(self._percentage_counter < self.time_counter):
+            # need calculatation
+            if(self.market_history[self._percentage_counter].high\
+                    and self.market_history[self._percentage_counter].low\
+                    and self.market_history[self._percentage_counter].open\
+                    and self.market_history[self._percentage_counter].close) is None:
+                raise Exception("Error: Agent_thread: this version mrkt_data cannot be used to calculate percentage"
+                                +"must have high low open close")
+
+            if self._percentage_counter == 0:
+                # spacial case: The first line
+                base = self.market_history[0].close
+                d = {"close" : self.market_history[0].close / base,
+                     "open" : self.market_history[0].open / base,
+                     "high" : self.market_history[0].high / base,
+                     "low" : self.market_history[0].low / base,
+                     }
+                self.percentage.append(d)
+                self._percentage_counter += 1
+            else:
+                base = self.market_history[self._percentage_counter - 1].close
+                d = {"close": self.market_history[self._percentage_counter].close / base,
+                     "open": self.market_history[self._percentage_counter].open / base,
+                     "high": self.market_history[self._percentage_counter].high / base,
+                     "low": self.market_history[self._percentage_counter].low / base
+                     }
+                self.percentage.append(d)
+                self._percentage_counter += 1
+        if len(self.percentage) != len(self.market_history):
+            raise Exception("Error: Agent_thread: Unmatched self.percentage and self.market_history")
+        # already up to date
+    def get_percentages(self, start=-1, end=None):
+        # default return the last one
+        # start = - N to return the lately N element
+        # [start : end] for ranged elements
+        self._find_percentage()
+        return  self.percentage[start:end]
 
     def get_action(self):
         # return action

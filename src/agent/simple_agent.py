@@ -11,6 +11,7 @@ class simple_agent(agent_thread):
 
     def _find_decision(self):
         # time.sleep(0.1) # to simulate time for calculation
+        print(self.get_percentages())
         if not self.holding:
             self.act = action.BUY
             self.holding = True
