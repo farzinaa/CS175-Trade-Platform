@@ -1,6 +1,9 @@
 # CS175-Trade-Platform
 
-Provide trade logic, as submodule of CS175 Project.\
+Provide trade logic, as submodule of CS175 Project.
+
+When you commit and push, if it is for the project, try to upload to the project repository([CS-175-project](https://github.com/yubinsun/CS-175-Project)) so that the logic will be more **stable**. If it is your version of agent, you can create a new branch to the project repository(CS-175-project). There are 2 repositories, and the trade logic(This one) is the submodule of the main repository(CS-175-project)
+
 <h3>
 Update 5/13: Changes to fit candle stick data
 </h3>
