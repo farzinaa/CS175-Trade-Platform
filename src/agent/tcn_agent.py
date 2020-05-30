@@ -66,9 +66,9 @@ class tcn_agent(agent_thread):
         if len(self.market_history) == self.moments*100 + 50:
             self.train()
         if len(self.market_history) > self.moments*100 + 50:
-            predicted_value = self.run_model()
+            predicted_value, real_current_value = self.run_model()
             print("Correct guess chance is: ", self.correct_guess*100/(self.time_counter - self.moments*100-50), "%")
-            if not self.holding and predicted_value[0] > self.market_history[self.time_counter-2].price:#(predicted_value[0] > 0 and predicted_value[1] > 0):
+            if not self.holding and predicted_value[0] > real_current_value[0]:#(predicted_value[0] > 0 and predicted_value[1] > 0):
                 self.amount = 100 #amount to buy is set to fix for now but can be changed
                 if self.amount < 0:
                     self.amount = 1
@@ -90,7 +90,7 @@ class tcn_agent(agent_thread):
                 #print(self.buy_in_price)
                 self.networth -= self.buy_in_price * self.amount
                 print("buy  at time " + str(self.time_counter) + "\t price : " + str(self.buy_in_price))
-            elif self.holding and predicted_value[0] < self.market_history[self.time_counter-2].price:#(predicted_value[0] < 0 or predicted_value[1] < 0):
+            elif self.holding and predicted_value[0] < real_current_value[0]:#(predicted_value[0] < 0 or predicted_value[1] < 0):
                 self.act = action.SELL
                 ###Sergei's algorithm
                 if (self.market_history[self.time_counter - 3].close <= self.market_history[self.time_counter - 3].open
@@ -246,10 +246,10 @@ class tcn_agent(agent_thread):
         #########################################################################
 
     def arima_feature(self, i):
-        if len(self.arima) < 25:
+        if len(self.arima) < 27:
             m = ARIMA(self.arima[:i], order=(5, 1, 0))
         else:
-            m = ARIMA(self.arima[i-25:i], order=(5,1,0))
+            m = ARIMA(self.arima[i-27:i], order=(5,1,0))
         m_fit = m.fit(disp=0)
         output = m_fit.forecast()
         #print(i)
@@ -398,7 +398,7 @@ class tcn_agent(agent_thread):
         x, y = self.split_data(self.moments*100, self.moments)
         #print(x)
         #print(y)
-        self.m.fit(x, y, epochs=400, validation_split=0.1)
+        self.m.fit(x, y, epochs=500, validation_split=0.1)
         
     def run_model(self):
         #if self.log_percentage != []:
@@ -412,7 +412,8 @@ class tcn_agent(agent_thread):
         y_hat = self.m.predict(x)
         print("Predicting next price to be: ", y_hat[0][0])
         print("Real next price was: ", y)
-        if ((y-self.market_history[-2].price) * (y_hat[0][0]-self.market_history[-2].price) > 0): #checks if agent guessed right on opening going up or down
+        print(x[0][-1][0])
+        if ((y-x[0][-1][0]) * (y_hat[0][0]-x[0][-1][0]) > 0): #checks if agent guessed right on opening going up or down
             self.correct_guess +=1
         y_normal = 0
         if self.percentage != []:
@@ -421,7 +422,7 @@ class tcn_agent(agent_thread):
             y_normal = 10*(y_hat[0][0]/self.market_history[-2].price)*self.market_history[-2].price
         #print("Converted back predicted value is ", y_normal) #To be changed to function to account for different normalized data
         #print("Read normal value is ", self.market_history[-1].price)
-        return y_hat[0]
+        return y_hat[0], x[0][-1]
 
     def update_market_history(self, data):
         # undate for 1 unit of time
