@@ -57,16 +57,18 @@ class tcn_agent(agent_thread):
         self.correct_guess = 0 #tracker to see when guessing correct of open prices
         self.sergei = 0
         self.arima = []
+        self.features = []
+        self.scaler = 0
 
     def _find_decision(self):
         #Right now these below if statement are for training and testing on the same data set with training on
         #the first self.moments*10 and testing on the remaining
-        if len(self.market_history) == self.moments*10 + 100:
+        if len(self.market_history) == self.moments*100 + 50:
             self.train()
-        if len(self.market_history) > self.moments*10 + 100:
+        if len(self.market_history) > self.moments*100 + 50:
             predicted_value = self.run_model()
-            print("Correct guess chance is: ", self.correct_guess*100/(self.time_counter - self.moments*10), "%")
-            if not self.holding and predicted_value[0] > 0:#(predicted_value[0] > 0 and predicted_value[1] > 0):
+            print("Correct guess chance is: ", self.correct_guess*100/(self.time_counter - self.moments*100-50), "%")
+            if not self.holding and predicted_value[0] > self.market_history[self.time_counter-2].price:#(predicted_value[0] > 0 and predicted_value[1] > 0):
                 self.amount = 100 #amount to buy is set to fix for now but can be changed
                 if self.amount < 0:
                     self.amount = 1
@@ -88,7 +90,7 @@ class tcn_agent(agent_thread):
                 #print(self.buy_in_price)
                 self.networth -= self.buy_in_price * self.amount
                 print("buy  at time " + str(self.time_counter) + "\t price : " + str(self.buy_in_price))
-            elif self.holding and predicted_value < 0:#(predicted_value[0] < 0 or predicted_value[1] < 0):
+            elif self.holding and predicted_value[0] < self.market_history[self.time_counter-2].price:#(predicted_value[0] < 0 or predicted_value[1] < 0):
                 self.act = action.SELL
                 ###Sergei's algorithm
                 if (self.market_history[self.time_counter - 3].close <= self.market_history[self.time_counter - 3].open
@@ -211,18 +213,18 @@ class tcn_agent(agent_thread):
 
         # Model 7: Layered TCN with LSTM on top, build for self.moments between 20-40, networth and accuracy can be used for testing
         #########################################################################
-        x1 = TCN(return_sequences=True, nb_filters = 10, dilations = [1, 2, 4], nb_stacks = 2, dropout_rate=.3, kernel_size=2)(i)
-        x2 = Lambda(lambda z: backend.reverse(z, axes=0))(i)
-        x2 = TCN(return_sequences=True, nb_filters=10, dilations=[1, 2, 4], nb_stacks=2, dropout_rate=.1,
+        x1 = TCN(return_sequences=False, nb_filters = 15, dilations = [1, 2, 4], nb_stacks = 2, dropout_rate=.3, kernel_size=2)(i)
+        x2 = Lambda(lambda z: backend.reverse(z, axes=-1))(i)
+        x2 = TCN(return_sequences=False, nb_filters=15, dilations=[1, 2, 4], nb_stacks=2, dropout_rate=.1,
                  kernel_size=2)(x2)
-        x1 = add([x1,x2])
+        #x1 = add([x1,x2])
         #x1 = TCN(return_sequences=True, nb_filters = 64, dilations = [1, 2, 4, 8], nb_stacks = 2, dropout_rate=.3, kernel_size=8)(x1)
-        x2 = LSTM(10, return_sequences=True, dropout=.3)(i)
+        #x2 = LSTM(15, return_sequences=True, dropout=.3)(i)
         ##x2 = LSTM(64, return_sequences=True, dropout=.3)(x2)
         x = add([x1, x2])
-        x = Dense(8, activation='linear')(x)
-        x = TCN(return_sequences=True, nb_filters=4, dilations=[1, 2, 4], nb_stacks=1, dropout_rate=.3, kernel_size=2, activation= wave_net_activation)(x)
-        x = concatenate([GlobalMaxPooling1D()(x), GlobalAveragePooling1D()(x)])
+        #x = Dense(8, activation='linear')(x)
+        #x = TCN(return_sequences=False, nb_filters=4, dilations=[1, 2, 4], nb_stacks=1, dropout_rate=.3, kernel_size=4, activation= wave_net_activation)(x)
+        #x = concatenate([GlobalMaxPooling1D()(x), GlobalAveragePooling1D()(x)])
         o = Dense(1, activation='linear')(x)
         #########################################################################
         # Model 7: Layered TCN with LSTM on top, build for self.moments between 20-40, networth and accuracy can be used for testing
@@ -244,14 +246,14 @@ class tcn_agent(agent_thread):
         #########################################################################
 
     def arima_feature(self, i):
-        if len(self.arima) < 27:
+        if len(self.arima) < 25:
             m = ARIMA(self.arima[:i], order=(5, 1, 0))
         else:
-            m = ARIMA(self.arima[i-27:i], order=(5,1,0))
+            m = ARIMA(self.arima[i-25:i], order=(5,1,0))
         m_fit = m.fit(disp=0)
         output = m_fit.forecast()
-        print(i)
-        print(output[0][0])
+        #print(i)
+        #print(output[0][0])
         return output[0][0]
 
     def get_technical_indicators(self, i):
@@ -273,22 +275,18 @@ class tcn_agent(agent_thread):
         return malast7, malast21#, explast7, explast21)
 
 
-    def split_data(self, input, moments, lookahead = 1):
+    def split_data(self, size, moments, lookahead = 1):
         # Split data into groups for training and testing
-        x = np.array([])
-        y = np.array([])
-        input = [[i.open, i.close, i.low, i.high] for i in input]
-        #input = [[i.open, i.close, (i.high-i.close+offset)*2/(i.close+i.high)] for i in input]
-        #input = [[i.open, i.close] for i in input]
-        for i in range(len(input)):
-            input[i].append(self.arima_feature(len(self.arima) - len(input) + i))
-            input[i].append(self.get_technical_indicators(i+moments-len(self.market_history))[0])
-            input[i].append(self.get_technical_indicators(i+moments-len(self.market_history))[1])
+        self.prepare_data()
+        input = self.features[-size:]
         input = np.array(input)
         input = np.atleast_2d(input)
+        x = np.array([])
+        y = np.array([])
         #print(input)
         #Normalize data)
-        #input = self.normalization(input, 'default')
+        input = self.normalization(input, 'default')
+        #print(input)
         for i in range(input.shape[0] - moments+1):
             x_values = np.array(input[i:moments + i - lookahead])
             y_values = np.array(input[i+moments-lookahead:i+moments][0][0])
@@ -315,8 +313,15 @@ class tcn_agent(agent_thread):
         #To be added to with normalization methods
         #Time consuming can be improved
         if mode == 'default':
-            scaler = preprocessing.MinMaxScaler()
-            return scaler.fit_transform(data)
+            if self.scaler == 0:
+                self.scaler = preprocessing.StandardScaler()
+                return self.scaler.fit_transform( data )
+            return self.scaler.transform( data )
+            #if self.scaler == 0:
+            #    self.scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
+            #    self.scaler = self.scaler.fit(data)
+            #    return self.scaler.fit_transform(data)
+            #return self.scaler.transform(data)
         elif mode == 'lognormal':
             normalized_data = list()
             for i, data_pt in enumerate(data):
@@ -364,6 +369,20 @@ class tcn_agent(agent_thread):
             return np.array(normalized_data)
         return data
 
+    def prepare_data(self):
+        difference = len(self.features) - len(self.market_history) + 50
+        #print(difference)
+        if difference < 0:
+            input = [[i.open, i.close, i.low, i.high] for i in self.market_history[difference:]]
+            # input = [[i.open, i.close, (i.high-i.close+offset)*2/(i.close+i.high)] for i in input]
+            # input = [[i.open, i.close] for i in input]
+            for i in range(len(input)):
+                input[i].append(self.arima_feature(len(self.arima) - len(input) + i))
+                input[i].append(self.get_technical_indicators(len(self.arima) - len(input) + i)[0])
+                input[i].append(self.get_technical_indicators(len(self.arima) - len(input) + i)[1])
+                self.features.append(input[i])
+            #self.features.append(input)
+
     def train(self, data_path = None):
         def read_data():
             if data_path == None:
@@ -376,19 +395,24 @@ class tcn_agent(agent_thread):
         inputs = read_data()
         if inputs == None:
             inputs = self.market_history[100:]
-        x, y = self.split_data(inputs, self.moments)
-        self.m.fit(x, y, epochs=200, validation_split=0.1)
+        x, y = self.split_data(self.moments*100, self.moments)
+        #print(x)
+        #print(y)
+        self.m.fit(x, y, epochs=400, validation_split=0.1)
         
     def run_model(self):
         #if self.log_percentage != []:
             #inputs = self.get_log_percentages(-self.moments)
         #else:
-        inputs = self.market_history[-self.moments:]
-        x, y = self.split_data(inputs, self.moments)
+        #inputs = self.market_history[-self.moments:]
+
+        x, y = self.split_data(self.moments, self.moments)
+        #print(x)
+        #print(y)
         y_hat = self.m.predict(x)
         print("Predicting next price to be: ", y_hat[0][0])
         print("Real next price was: ", y)
-        if (y*y_hat[0][0] > 0): #checks if agent guessed right on opening going up or down
+        if ((y-self.market_history[-2].price) * (y_hat[0][0]-self.market_history[-2].price) > 0): #checks if agent guessed right on opening going up or down
             self.correct_guess +=1
         y_normal = 0
         if self.percentage != []:
