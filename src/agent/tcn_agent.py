@@ -64,7 +64,7 @@ class tcn_agent(agent_thread):
     #t.start()
     #Can change perameters, just need to set trainset to 0 when running on another dataset
 
-    def __init__(self, moments = 17, batch_size = None, input_dim = 6, model = '1', trainset = 10, arima = False):
+    def __init__(self, moments = 17, batch_size = None, input_dim = 6, model = '1', trainset = 100, arima = False):
         agent_thread.__init__(self)
         self.moments = moments #Number of moments looked back to decide next value
         self.holding_time = 0
