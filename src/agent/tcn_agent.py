@@ -250,7 +250,7 @@ class tcn_agent(agent_thread):
         # Split data into groups for training and testing
         size = len(input)
         if self.training_data == 0 and len(self.features) == 0:
-            self.prepare_data(input)
+            self.prepare_data_(input)
         else:
             self.prepare_data()
         input = self.features[-size:]
@@ -360,7 +360,7 @@ class tcn_agent(agent_thread):
                 input[i].append(self.get_technical_indicators(len(self.arima) - len(input) + i)[1])
                 self.features.append(input[i])
 
-    def prepare_data(self, input):
+    def prepare_data_(self, input):
         difference = len(self.features) - len(input)
         if self.arima_on:
             difference +=50
