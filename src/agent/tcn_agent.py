@@ -1,6 +1,7 @@
 from trade_platform.src.agent.agent_thread import agent_thread
 from ...src.util.util import *
 import numpy as np
+import matplotlib.pyplot as plt
 from ...src.util.mrkt_data import mrkt_data
 from tensorflow.keras.layers import Dense, add, Lambda, GlobalMaxPooling1D, GlobalAveragePooling1D, Dropout, Conv1D
 from tensorflow.keras.layers import concatenate, LSTM, Activation, multiply, Convolution1D, MaxPooling1D, Flatten
@@ -80,6 +81,9 @@ class tcn_agent(agent_thread):
         self.arima = []
         self.features = []
         self.scaler = 0
+        self.buy_points = []
+        self.sell_points = []
+        self.networth_points = []
         self.training_data = moments*trainset #Amount of data to set aside for training when running on same data set
         self.arima_on = arima #Neither to use arima or not, show run and training time but increase accuracy
         if self.arima_on == True:
@@ -89,6 +93,8 @@ class tcn_agent(agent_thread):
         #Right now these below if statement are for training and testing on the same data set with training on
         #the first self.moments*10 and testing on the remaining
         offset = 0
+        if len(self.market_history)%50 == 0 and len(self.market_history) > self.training_data + offset:
+            self.plot()
         if self.arima_on:
             offset = 50
         if self.training_data == 0:
@@ -119,6 +125,7 @@ class tcn_agent(agent_thread):
                 else:
                     self.buy_in_price = self.market_history[self.time_counter - 2].price #base price
                 #print(self.buy_in_price)
+                self.buy_points.append([self.time_counter-1, self.buy_in_price])
                 self.networth -= self.buy_in_price * self.amount
                 print("buy  at time " + str(self.time_counter) + "\t price : " + str(self.buy_in_price))
             elif self.holding and predicted_value[0] < real_current_value[0]:#(predicted_value[0] < 0 or predicted_value[1] < 0):
@@ -133,7 +140,9 @@ class tcn_agent(agent_thread):
                     self.sergei += (self.buy_in_price - self.market_history[self.time_counter - 2].price) * self.amount
                 else:
                     self.sell_price = self.market_history[self.time_counter - 2].price
+                self.sell_points.append([self.time_counter - 1, self.sell_price])
                 self.networth += self.sell_price * self.amount#base price
+                self.networth_points.append([self.time_counter -1, self.networth])
                 #print(self.market_history[self.time_counter - 2].price) #selling price base
                 self.amount = 0 #reset amount to account for varying amounts
                 print("sell at time " + str(self.time_counter) + "\t price : " + str(
@@ -425,6 +434,26 @@ class tcn_agent(agent_thread):
         self.next_time()
         self.market_history.append(data)
         self.arima.append(data.price)
+
+    def plot(self):
+        plt.plot(np.arange(len(self.market_history)-49, len(self.market_history)), [self.features[i][0] for i in np.arange(len(self.features)-49, len(self.features))], label="market")
+        offset = 0
+        if self.arima_on:
+            offset = 50
+        if len(self.market_history) > self.training_data + offset + 50:
+            print(self.buy_points)
+            plt.scatter([i[0] for i in self.buy_points[:] if i[0] > self.time_counter - 50], [i[1] for i in self.buy_points[:] if i[0] > self.time_counter - 50], label="buy")
+            plt.scatter([i[0] for i in self.sell_points[:] if i[0] > self.time_counter - 50], [i[1] for i in self.sell_points[:] if i[0] > self.time_counter - 50], label="sell")
+        plt.xlabel('time')
+        plt.ylabel('price')
+        plt.legend()
+        plt.show()
+        if len(self.market_history) > self.training_data + offset + 50:
+            plt.plot([i[0] for i in self.networth_points[:] if i[0] > self.time_counter - 50], [i[1] for i in self.networth_points[:] if i[0] > self.time_counter - 50], label="networth")
+            plt.xlabel('time')
+            plt.ylabel('dollars')
+            plt.legend()
+            plt.show()
 
     def set_exit(self, value=True):
         # used to exit this agent thread
