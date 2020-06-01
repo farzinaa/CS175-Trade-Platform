@@ -65,12 +65,15 @@ class tcn_agent(agent_thread):
     #t.start()
     #Can change perameters, just need to set trainset to 0 when running on another dataset
 
-    def __init__(self, moments = 17, batch_size = None, input_dim = 6, model = '1', trainset = 100, arima = False):
+    def __init__(self, moments = 17, batch_size = None, input_dim = 6, model = '1', trainset = 100, arima = True):
         agent_thread.__init__(self)
         self.moments = moments #Number of moments looked back to decide next value
         self.holding_time = 0
         self.batch_size = batch_size
         self.input_dim = input_dim #Dimensions of input default to 1
+        self.arima_on = arima  # Neither to use arima or not, show run and training time but increase accuracy
+        if self.arima_on == True:
+            self.input_dim += 1
         self.built = False
         self.model(model) #Compile model
         self.training = True
@@ -85,18 +88,15 @@ class tcn_agent(agent_thread):
         self.sell_points = []
         self.networth_points = []
         self.training_data = moments*trainset #Amount of data to set aside for training when running on same data set
-        self.arima_on = arima #Neither to use arima or not, show run and training time but increase accuracy
-        if self.arima_on == True:
-            self.input_dim +=1
 
     def _find_decision(self):
         #Right now these below if statement are for training and testing on the same data set with training on
         #the first self.moments*10 and testing on the remaining
         offset = 0
-        if len(self.market_history)%50 == 0 and len(self.market_history) > self.training_data + offset:
-            self.plot()
         if self.arima_on:
             offset = 50
+        if len(self.market_history)%50 == 0 and len(self.market_history) > self.training_data + offset:
+            self.plot()
         if self.training_data == 0:
             pass
         elif len(self.market_history) == self.training_data + offset:
@@ -267,15 +267,11 @@ class tcn_agent(agent_thread):
         input = np.atleast_2d(input)
         x = np.array([])
         y = np.array([])
-        #print(input)
-        #Normalize data)
+        #Normalize data
         input = self.normalization(input, 'default')
-        #print(input)
         for i in range(input.shape[0] - moments+1):
             x_values = np.array(input[i:moments + i - lookahead])
             y_values = np.array(input[i+moments-lookahead:i+moments][0][0])
-            #print(y_values.shape)
-            #print(y_values)
             if (x.shape[0] == 0):
                 x = x_values
                 if len(y_values.shape) == 1:
@@ -357,7 +353,6 @@ class tcn_agent(agent_thread):
         difference = len(self.features) - len(self.market_history)
         if self.arima_on:
             difference +=50
-        #print(difference)
         if difference < 0:
             input = [[i.open, i.close, i.low, i.high] for i in self.market_history[difference:]]
             # input = [[i.open, i.close, (i.high-i.close+offset)*2/(i.close+i.high)] for i in input]
@@ -373,7 +368,6 @@ class tcn_agent(agent_thread):
         difference = len(self.features) - len(input)
         if self.arima_on:
             difference +=50
-        #print(difference)
         if difference < 0:
             input = [[i.open, i.close, i.low, i.high] for i in input[difference:]]
             # input = [[i.open, i.close, (i.high-i.close+offset)*2/(i.close+i.high)] for i in input]
@@ -401,8 +395,6 @@ class tcn_agent(agent_thread):
             else:
                 inputs = self.market_history[:]
         x, y = self.split_data(inputs, self.moments)
-        #print(x)
-        #print(y)
         self.m.fit(x, y, epochs=500, validation_split=0.1)
         
     def run_model(self):
@@ -417,7 +409,6 @@ class tcn_agent(agent_thread):
         y_hat = self.m.predict(x)
         print("Predicting next price to be: ", y_hat[0][0])
         print("Real next price was: ", y)
-        print(x[0][-1][0])
         if ((y-x[0][-1][0]) * (y_hat[0][0]-x[0][-1][0]) > 0): #checks if agent guessed right on opening going up or down
             self.correct_guess +=1
         y_normal = 0
