@@ -432,7 +432,6 @@ class tcn_agent(agent_thread):
         if self.arima_on:
             offset = 50
         if len(self.market_history) > self.training_data + offset + 50:
-            print(self.buy_points)
             plt.scatter([i[0] for i in self.buy_points[:] if i[0] > self.time_counter - 50], [i[1] for i in self.buy_points[:] if i[0] > self.time_counter - 50], label="buy")
             plt.scatter([i[0] for i in self.sell_points[:] if i[0] > self.time_counter - 50], [i[1] for i in self.sell_points[:] if i[0] > self.time_counter - 50], label="sell")
         plt.xlabel('time')
